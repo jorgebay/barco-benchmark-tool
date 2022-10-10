@@ -42,21 +42,21 @@ func BuildWorkload(name string, url string, messagesPerRequest int) Workload {
 
 // Describes a workload with large portion of random data
 type randomWorkload struct {
-	url                string
+	url                *urlIterator
 	messagesPerRequest int
 	payloads           [][]byte
 }
 
 func newRandomWorkload(url string, messagesPerRequest int) Workload {
 	return &randomWorkload{
-		url:                url,
+		url:                newUrlIterator(url),
 		messagesPerRequest: messagesPerRequest,
 		payloads:           make([][]byte, totalPayloads),
 	}
 }
 
 func (w *randomWorkload) Url() string {
-	return w.url
+	return w.url.next()
 }
 
 func (w *randomWorkload) Method() string {
@@ -137,15 +137,15 @@ func tokenString(maxLength int) string {
 
 // Sample GET workload
 type getWorkload struct {
-	url string
+	url *urlIterator
 }
 
 func newGetWorkload(url string) Workload {
-	return &getWorkload{url}
+	return &getWorkload{url: newUrlIterator(url)}
 }
 
 func (w *getWorkload) Url() string {
-	return w.url
+	return w.url.next()
 }
 
 func (w *getWorkload) Method() string {

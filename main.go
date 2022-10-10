@@ -22,7 +22,7 @@ var lastError atomic.Value
 var requestsLength = flag.Int("n", 100, "Number of  requests across all  clients")
 var clientsLength = flag.Int("c", 1, "Number of clients")
 var maxConcurrentStreams = flag.Int("m", 32, "Max concurrent requests to issue per client")
-var url = flag.String("u", "", "The uri of the endpoint")
+var url = flag.String("u", "", "The uri(s) of the endpoint(s)")
 var workloadName = flag.String("w", "default", "The name of the workload")
 var messagesPerRequest = flag.Int("mr", 16, "Number of messages per request in the workload (when supported)")
 
