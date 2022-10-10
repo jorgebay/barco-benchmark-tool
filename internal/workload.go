@@ -26,12 +26,12 @@ type Workload interface {
 	ContentType() string
 	Init()
 	Body(index int) io.Reader
-	MessagesPerPayload() int64
+	MessagesPerPayload() int
 }
 
-func BuildWorkload(name string, url string) Workload {
+func BuildWorkload(name string, url string, messagesPerRequest int) Workload {
 	if name == "default" || name == "random" {
-		return newRandomWorkload(url)
+		return newRandomWorkload(url, messagesPerRequest)
 	}
 	if name == "get" {
 		return newGetWorkload(url)
@@ -42,14 +42,16 @@ func BuildWorkload(name string, url string) Workload {
 
 // Describes a workload with large portion of random data
 type randomWorkload struct {
-	url      string
-	payloads [][]byte
+	url                string
+	messagesPerRequest int
+	payloads           [][]byte
 }
 
-func newRandomWorkload(url string) Workload {
+func newRandomWorkload(url string, messagesPerRequest int) Workload {
 	return &randomWorkload{
-		url:      url,
-		payloads: make([][]byte, totalPayloads),
+		url:                url,
+		messagesPerRequest: messagesPerRequest,
+		payloads:           make([][]byte, totalPayloads),
 	}
 }
 
@@ -65,8 +67,8 @@ func (w *randomWorkload) ContentType() string {
 	return "application/x-ndjson"
 }
 
-func (w *randomWorkload) MessagesPerPayload() int64 {
-	return 16
+func (w *randomWorkload) MessagesPerPayload() int {
+	return w.messagesPerRequest
 }
 
 func (w *randomWorkload) Init() {
@@ -77,7 +79,7 @@ func (w *randomWorkload) Init() {
 	buf := new(bytes.Buffer)
 	for i := 0; i < totalPayloads; i++ {
 		buf.Reset()
-		for j := 0; j < int(w.MessagesPerPayload()); j++ {
+		for j := 0; j < w.messagesPerRequest; j++ {
 			if j > 0 {
 				buf.WriteRune('\n')
 			}
@@ -154,7 +156,7 @@ func (w *getWorkload) ContentType() string {
 	return ""
 }
 
-func (w *getWorkload) MessagesPerPayload() int64 {
+func (w *getWorkload) MessagesPerPayload() int {
 	return 1
 }
 

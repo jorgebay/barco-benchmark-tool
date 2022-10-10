@@ -24,6 +24,7 @@ var clientsLength = flag.Int("c", 1, "Number of clients")
 var maxConcurrentStreams = flag.Int("m", 32, "Max concurrent requests to issue per client")
 var url = flag.String("u", "", "The uri of the endpoint")
 var workloadName = flag.String("w", "default", "The name of the workload")
+var messagesPerRequest = flag.Int("mr", 16, "Number of messages per request in the workload (when supported)")
 
 func main() {
 	flag.Parse()
@@ -34,7 +35,7 @@ func main() {
 
 	fmt.Printf("Starting benchmark. %d total client(s). %d total requests\n", *clientsLength, *requestsLength)
 
-	workload := BuildWorkload(*workloadName, *url)
+	workload := BuildWorkload(*workloadName, *url, *messagesPerRequest)
 	fmt.Println("Initializing")
 	workload.Init()
 
@@ -77,7 +78,10 @@ func printResult(start time.Time, totalResponses int64, workload Workload) {
 	}
 
 	reqThroughput := (totalResponses * 1000 * 1000) / timeSpent.Microseconds()
-	fmt.Printf("Throughput %d messages/s (%d req/s)\n", reqThroughput*workload.MessagesPerPayload(), reqThroughput)
+	fmt.Printf(
+		"Throughput %d messages/s (%d req/s)\n",
+		reqThroughput*int64(workload.MessagesPerPayload()),
+		reqThroughput)
 }
 
 func warmup(workload Workload) {
