@@ -18,28 +18,30 @@ import (
 
 var lastError atomic.Value
 
-func main() {
-	// Based on h2load parameter names
-	requestsLength := flag.Int("n", 100, "Number of  requests across all  clients")
-	clientsLength := flag.Int("c", 1, "Number of clients")
-	maxConcurrentStreams := flag.Int("m", 1024, "Max  concurrent  requests  to issue  per  session")
-	url := flag.String("u", "", "The uri of the endpoint")
+// Based on h2load parameter names
+var requestsLength = flag.Int("n", 100, "Number of  requests across all  clients")
+var clientsLength = flag.Int("c", 1, "Number of clients")
+var maxConcurrentStreams = flag.Int("m", 32, "Max concurrent requests to issue per client")
+var url = flag.String("u", "", "The uri of the endpoint")
+var workloadName = flag.String("w", "default", "The name of the workload")
 
-    flag.Parse()
+func main() {
+	flag.Parse()
 
 	if *url == "" {
 		panic("Uri is required")
 	}
 
-	fmt.Printf("Starting benchmark. %d total client(s). %d total requests", *clientsLength, *requestsLength)
+	fmt.Printf("Starting benchmark. %d total client(s). %d total requests\n", *clientsLength, *requestsLength)
 
-	workload := NewRandomWorkload(*url)
+	workload := BuildWorkload(*workloadName, *url)
+	fmt.Println("Initializing")
 	workload.Init()
 
 	fmt.Println("Warming up")
 	warmup(workload)
 
-	fmt.Println("Starting workload")
+	fmt.Println("Starting workload", *workloadName)
 	totalResponses := int64(0)
 	var wg sync.WaitGroup
 	requestsPerClient := *requestsLength / *clientsLength
@@ -54,9 +56,15 @@ func main() {
 	}
 	wg.Wait()
 
-	fmt.Printf("Finished. Total responses %d in %dms\n", atomic.LoadInt64(&totalResponses), time.Since(start).Milliseconds())
+	printResult(start, atomic.LoadInt64(&totalResponses), workload)
+}
 
-	totalErrors := int64(requestsPerClient * *clientsLength) - atomic.LoadInt64(&totalResponses)
+func printResult(start time.Time, totalResponses int64, workload Workload) {
+	timeSpent := time.Since(start)
+	fmt.Printf("Finished. Total responses %d in %dms\n", totalResponses, timeSpent.Milliseconds())
+	requestsPerClient := *requestsLength / *clientsLength
+	totalErrors := int64(requestsPerClient**clientsLength) - totalResponses
+
 	if totalErrors > 0 {
 		fmt.Printf("Encountered %d errors", totalErrors)
 
@@ -65,16 +73,19 @@ func main() {
 			fmt.Printf(". Last error: %s", errMessage)
 		}
 		fmt.Println()
+		return
 	}
+
+	reqThroughput := (totalResponses * 1000 * 1000) / timeSpent.Microseconds()
+	fmt.Printf("Throughput %d messages/s (%d req/s)\n", reqThroughput*workload.MessagesPerPayload(), reqThroughput)
 }
 
 func warmup(workload Workload) {
-	runClient(1000, 16, workload)
+	runClient(10000, 16, workload)
 }
 
 func runClient(requestsLength int, maxConcurrentStreams int, workload Workload) int64 {
 	client := http.Client{
-
 		Transport: &http2.Transport{
 			StrictMaxConcurrentStreams: true,
 			AllowHTTP:                  true,
@@ -92,10 +103,10 @@ func runClient(requestsLength int, maxConcurrentStreams int, workload Workload) 
 	}
 
 	counter := int64(0)
-	startIndex := rand.Intn(1<<31)
+	startIndex := rand.Intn(1 << 31)
 
 	for i := 0; i < requestsLength; i++ {
-		<- c
+		<-c
 		go func(v int) {
 			success := doRequest(client, workload, startIndex+v)
 			c <- true
@@ -107,7 +118,7 @@ func runClient(requestsLength int, maxConcurrentStreams int, workload Workload) 
 
 	// Receive the last ones
 	for i := 0; i < maxConcurrentStreams; i++ {
-		<- c
+		<-c
 	}
 
 	return atomic.LoadInt64(&counter)
@@ -115,6 +126,9 @@ func runClient(requestsLength int, maxConcurrentStreams int, workload Workload) 
 
 func doRequest(client http.Client, w Workload, v int) bool {
 	req, err := http.NewRequest(w.Method(), w.Url(), w.Body(v))
+	if w.ContentType() != "" {
+		req.Header.Add("Content-Type", w.ContentType())
+	}
 	if err != nil {
 		panic(err)
 	}
