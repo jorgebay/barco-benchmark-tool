@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/HdrHistogram/hdrhistogram-go"
 	. "github.com/jorgebay/barco-benchmark-tool/internal"
 	"golang.org/x/net/http2"
 )
@@ -25,6 +26,8 @@ var maxConcurrentStreams = flag.Int("m", 32, "Max concurrent requests to issue p
 var url = flag.String("u", "", "The uri(s) of the endpoint(s)")
 var workloadName = flag.String("w", "default", "The name of the workload")
 var messagesPerRequest = flag.Int("mr", 16, "Number of messages per request in the workload (when supported)")
+
+var histogram = hdrhistogram.New(1, 4_000_000, 4)
 
 func main() {
 	flag.Parse()
@@ -51,7 +54,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			okResponses := runClient(requestsPerClient, *maxConcurrentStreams, workload)
+			okResponses := runClient(requestsPerClient, *maxConcurrentStreams, workload, false)
 			atomic.AddInt64(&totalResponses, int64(okResponses))
 		}()
 	}
@@ -62,7 +65,8 @@ func main() {
 
 func printResult(start time.Time, totalResponses int64, workload Workload) {
 	timeSpent := time.Since(start)
-	fmt.Printf("Finished. Total responses %d in %dms\n", totalResponses, timeSpent.Milliseconds())
+	fmt.Printf("Finished. Total responses %d in %dms.\n", totalResponses, timeSpent.Milliseconds())
+
 	requestsPerClient := *requestsLength / *clientsLength
 	totalErrors := int64(requestsPerClient**clientsLength) - totalResponses
 
@@ -77,7 +81,12 @@ func printResult(start time.Time, totalResponses int64, workload Workload) {
 		return
 	}
 
-	reqThroughput := (totalResponses * 1000 * 1000) / timeSpent.Microseconds()
+	fmt.Printf(
+		"Latency in ms p50: %.1f; p999: %.1f max: %.1f.\n",
+		float64(histogram.ValueAtQuantile(50)) / 1_000,
+		float64(histogram.ValueAtQuantile(99.9)) / 1_000,
+		float64(histogram.ValueAtQuantile(100)) / 1_000)
+	reqThroughput := (totalResponses * 1_000_000) / timeSpent.Microseconds()
 	fmt.Printf(
 		"Throughput %d messages/s (%d req/s)\n",
 		reqThroughput*int64(workload.MessagesPerPayload()),
@@ -85,10 +94,10 @@ func printResult(start time.Time, totalResponses int64, workload Workload) {
 }
 
 func warmup(workload Workload) {
-	runClient(10000, 16, workload)
+	runClient(10000, 16, workload, true)
 }
 
-func runClient(requestsLength int, maxConcurrentStreams int, workload Workload) int64 {
+func runClient(requestsLength int, maxConcurrentStreams int, workload Workload, isWarmup bool) int64 {
 	client := http.Client{
 		Transport: &http2.Transport{
 			StrictMaxConcurrentStreams: true,
@@ -112,7 +121,7 @@ func runClient(requestsLength int, maxConcurrentStreams int, workload Workload) 
 	for i := 0; i < requestsLength; i++ {
 		<-c
 		go func(v int) {
-			success := doRequest(client, workload, startIndex+v)
+			success := doRequest(client, workload, startIndex+v, isWarmup)
 			c <- true
 			if success {
 				atomic.AddInt64(&counter, 1)
@@ -128,7 +137,7 @@ func runClient(requestsLength int, maxConcurrentStreams int, workload Workload) 
 	return atomic.LoadInt64(&counter)
 }
 
-func doRequest(client http.Client, w Workload, v int) bool {
+func doRequest(client http.Client, w Workload, v int, isWarmup bool) bool {
 	req, err := http.NewRequest(w.Method(), w.Url(), w.Body(v))
 	if w.ContentType() != "" {
 		req.Header.Add("Content-Type", w.ContentType())
@@ -136,6 +145,7 @@ func doRequest(client http.Client, w Workload, v int) bool {
 	if err != nil {
 		panic(err)
 	}
+	start := time.Now()
 	resp, err := client.Do(req)
 	if err != nil {
 		lastError.Store(err.Error())
@@ -143,6 +153,10 @@ func doRequest(client http.Client, w Workload, v int) bool {
 	}
 
 	defer resp.Body.Close()
+	if !isWarmup {
+		histogram.RecordValue(time.Since(start).Microseconds())
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
