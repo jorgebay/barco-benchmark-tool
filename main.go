@@ -117,6 +117,7 @@ func runClient(requestsLength int, maxConcurrentStreams int, workload Workload, 
 			ForceAttemptHTTP2:     false,
 			MaxIdleConns:          100,
 			IdleConnTimeout:       10 * time.Second,
+			MaxConnsPerHost:       1,
 		}
 	} else {
 		transport = &http2.Transport{

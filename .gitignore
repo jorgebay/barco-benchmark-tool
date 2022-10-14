@@ -16,3 +16,8 @@
 
 # Local tests with multiple instances
 **/home*/
+
+# Terraform state files
+.terraform**
+*.tfstate
+*.backup
