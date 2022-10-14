@@ -33,7 +33,7 @@ var maxConcurrentStreams = flag.Int("m", 32, "Max concurrent requests to issue p
 var url = flag.String("u", "", "The uri(s) of the endpoint(s)")
 var workloadName = flag.String("w", "default", "The name of the workload")
 var messagesPerRequest = flag.Int("mr", 16, "Number of messages per request in the workload (when supported)")
-var useH1 = flag.Bool("h1", false, "Force http/1.1")
+var useH2 = flag.Bool("h2", false, "Use http/2")
 
 var histogram = hdrhistogram.New(1, 4_000_000, 4)
 
@@ -49,9 +49,9 @@ func main() {
 	workload := BuildWorkload(*workloadName, *url, *messagesPerRequest)
 	fmt.Println("Initializing")
 	workload.Init()
-	version := h2
-	if *useH1 {
-		version = h1
+	version := h1
+	if *useH2 {
+		version = h2
 	}
 
 	fmt.Println("Warming up")
