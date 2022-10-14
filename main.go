@@ -30,10 +30,11 @@ var lastError atomic.Value
 var requestsLength = flag.Int("n", 100, "Number of  requests across all  clients")
 var clientsLength = flag.Int("c", 1, "Number of clients")
 var maxConcurrentStreams = flag.Int("m", 32, "Max concurrent requests to issue per client.")
+var maxConnectionsPerHost = flag.Int("ch", 16, "For HTTP/1.1, determines the max connections per host.")
 var url = flag.String("u", "", "The uri(s) of the endpoint(s)")
 var workloadName = flag.String("w", "default", "The name of the workload")
 var messagesPerRequest = flag.Int("mr", 16, "Number of messages per request in the workload (when supported)")
-var useH2 = flag.Bool("h2", false, "Use http/2")
+var useH2 = flag.Bool("h2", false, "Use HTTP/2")
 
 var histogram = hdrhistogram.New(1, 4_000_000, 4)
 
@@ -114,8 +115,8 @@ func runClient(requestsLength int, maxConcurrentStreams int, workload Workload, 
 
 	if v == h1 {
 		transport = &http.Transport{
-			MaxConnsPerHost:     2,
-			MaxIdleConnsPerHost: 10,
+			MaxConnsPerHost:     *maxConnectionsPerHost,
+			MaxIdleConnsPerHost: *maxConnectionsPerHost,
 		}
 	} else {
 		transport = &http2.Transport{
