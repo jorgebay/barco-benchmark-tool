@@ -114,10 +114,8 @@ func runClient(requestsLength int, maxConcurrentStreams int, workload Workload, 
 
 	if v == h1 {
 		transport = &http.Transport{
-			ForceAttemptHTTP2:     false,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       10 * time.Second,
-			MaxConnsPerHost:       1,
+			MaxConnsPerHost:     2,
+			MaxIdleConnsPerHost: 10,
 		}
 	} else {
 		transport = &http2.Transport{
@@ -131,8 +129,9 @@ func runClient(requestsLength int, maxConcurrentStreams int, workload Workload, 
 		}
 	}
 
-	client := http.Client{
+	client := &http.Client{
 		Transport: transport,
+		Timeout:   10 * time.Second,
 	}
 
 	c := make(chan bool, maxConcurrentStreams)
@@ -162,7 +161,7 @@ func runClient(requestsLength int, maxConcurrentStreams int, workload Workload, 
 	return atomic.LoadInt64(&counter)
 }
 
-func doRequest(client http.Client, w Workload, v int, isWarmup bool) bool {
+func doRequest(client *http.Client, w Workload, v int, isWarmup bool) bool {
 	req, err := http.NewRequest(w.Method(), w.Url(), w.Body(v))
 	if w.ContentType() != "" {
 		req.Header.Add("Content-Type", w.ContentType())
@@ -189,6 +188,8 @@ func doRequest(client http.Client, w Workload, v int, isWarmup bool) bool {
 		}
 		lastError.Store(string(body))
 		return false
+	} else {
+		io.Copy(io.Discard, resp.Body)
 	}
 	return true
 }
