@@ -17,15 +17,23 @@ import (
 	"golang.org/x/net/http2"
 )
 
+type httpVersion int
+
+const (
+	h1 httpVersion = iota
+	h2
+)
+
 var lastError atomic.Value
 
 // Based on h2load parameter names
 var requestsLength = flag.Int("n", 100, "Number of  requests across all  clients")
 var clientsLength = flag.Int("c", 1, "Number of clients")
-var maxConcurrentStreams = flag.Int("m", 32, "Max concurrent requests to issue per client")
+var maxConcurrentStreams = flag.Int("m", 32, "Max concurrent requests to issue per client.")
 var url = flag.String("u", "", "The uri(s) of the endpoint(s)")
 var workloadName = flag.String("w", "default", "The name of the workload")
 var messagesPerRequest = flag.Int("mr", 16, "Number of messages per request in the workload (when supported)")
+var useH1 = flag.Bool("h1", false, "Force http/1.1")
 
 var histogram = hdrhistogram.New(1, 4_000_000, 4)
 
@@ -41,9 +49,13 @@ func main() {
 	workload := BuildWorkload(*workloadName, *url, *messagesPerRequest)
 	fmt.Println("Initializing")
 	workload.Init()
+	version := h2
+	if *useH1 {
+		version = h1
+	}
 
 	fmt.Println("Warming up")
-	warmup(workload)
+	warmup(workload, version)
 
 	fmt.Println("Starting workload", *workloadName)
 	totalResponses := int64(0)
@@ -54,7 +66,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			okResponses := runClient(requestsPerClient, *maxConcurrentStreams, workload, false)
+			okResponses := runClient(requestsPerClient, *maxConcurrentStreams, workload, version, false)
 			atomic.AddInt64(&totalResponses, int64(okResponses))
 		}()
 	}
@@ -93,13 +105,21 @@ func printResult(start time.Time, totalResponses int64, workload Workload) {
 		reqThroughput)
 }
 
-func warmup(workload Workload) {
-	runClient(10000, 16, workload, true)
+func warmup(workload Workload, v httpVersion) {
+	runClient(10000, 16, workload, v, true)
 }
 
-func runClient(requestsLength int, maxConcurrentStreams int, workload Workload, isWarmup bool) int64 {
-	client := http.Client{
-		Transport: &http2.Transport{
+func runClient(requestsLength int, maxConcurrentStreams int, workload Workload, v httpVersion, isWarmup bool) int64 {
+	var transport http.RoundTripper
+
+	if v == h1 {
+		transport = &http.Transport{
+			ForceAttemptHTTP2:     false,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       10 * time.Second,
+		}
+	} else {
+		transport = &http2.Transport{
 			StrictMaxConcurrentStreams: true,
 			AllowHTTP:                  true,
 			DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
@@ -107,7 +127,11 @@ func runClient(requestsLength int, maxConcurrentStreams int, workload Workload, 
 				return net.Dial(network, addr)
 			},
 			ReadIdleTimeout: 1 * time.Second,
-		},
+		}
+	}
+
+	client := http.Client{
+		Transport: transport,
 	}
 
 	c := make(chan bool, maxConcurrentStreams)
