@@ -1,5 +1,5 @@
 git clone https://github.com/polarstreams/polar.git
-cd polar && git checkout refactor-flow-controller && go build .
+cd polar && git checkout main && go build .
 
 export POLAR_SHUTDOWN_DELAY_SECS=0
 export POLAR_HOME=/data/polar-data
