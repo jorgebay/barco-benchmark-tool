@@ -90,7 +90,7 @@ resource aws_instance brokers {
   key_name = var.key_name
   private_ip = "10.0.0.10${count.index}"
   credit_specification {
-    cpu_credits = "standard" # or "unlimited"
+    cpu_credits = "unlimited" # or "standard"
   }
   tags = {
     Name        = "Benchmarks - Broker${count.index}",

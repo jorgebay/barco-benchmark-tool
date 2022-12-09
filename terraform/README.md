@@ -1,4 +1,4 @@
-# Terraform Barco Cluster for Benchmarking
+# Terraform PolarStreams Cluster for Benchmarking
 
 Set your [AWS key pair name](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/create-key-pairs.html).
 

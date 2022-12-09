@@ -1,6 +1,6 @@
-# Barco Benchmarking Tool
+# PolarStreams Benchmarking Tool
 
-Uses HTTP/2 clients to benchmark Barco's producer API.
+Uses HTTP/2 clients to benchmark PolarStreams's producer API.
 
 The load tool works in a similar way as [h2load] but it has the ability to generate a pseudo random payload to
 try to mimic production values.
@@ -16,8 +16,8 @@ go build .
 ## Usage
 
 ```shell
-./barco-benchmark-tool -h
-Usage of ./barco-benchmark-tool:
+./polar-benchmark-tool -h
+Usage of ./polar-benchmark-tool:
   -c int
     	Number of clients (default 1)
   -m int
@@ -34,10 +34,10 @@ Usage of ./barco-benchmark-tool:
 
 ### Example
 
-Starting a pseudo random workload with 1 million of post requests with 32 messages per request targeting 3 brokers.
+Starting a pseudo random workload with 1 million of post requests with 64 messages per request targeting 3 brokers.
 
 ```shell
-./barco-benchmark-tool -c 8 -n 1000000 -m 32 -mr 32 \
+./polar-benchmark-tool -c 32 -n 1000000 -m 16 -mr 64 -ch 16 \
     -u http://10.0.0.100:9251/v1/topic/a-topic/messages,http://10.0.0.101:9251/v1/topic/a-topic/messages,http://10.0.0.102:9251/v1/topic/a-topic/messages
 
 Finished. Total responses 1000000 in 44212ms.

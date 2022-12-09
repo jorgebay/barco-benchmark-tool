@@ -1,7 +1,7 @@
-git clone https://github.com/barcostreams/barco.git
-cd barco && go build .
+git clone https://github.com/polarstreams/polar.git
+cd polar && git checkout refactor-flow-controller && go build .
 
-export BARCO_SHUTDOWN_DELAY_SECS=0
-export BARCO_HOME=/data/barco-data
-export BARCO_BROKER_NAMES=10.0.0.100,10.0.0.101,10.0.0.102
-rm -Rf /data/barco-data && BARCO_ORDINAL=X ./barco
+export POLAR_SHUTDOWN_DELAY_SECS=0
+export POLAR_HOME=/data/polar-data
+export POLAR_BROKER_NAMES=10.0.0.100,10.0.0.101,10.0.0.102
+rm -Rf /data/polar-data && POLAR_ORDINAL=X ./polar

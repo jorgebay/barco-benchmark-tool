@@ -12,5 +12,5 @@ sudo mkdir /data
 sudo mkfs -t xfs /dev/nvme1n1
 sudo mount /dev/nvme1n1 /data
 sudo chmod 777 /data
-sudo mkdir /data/barco-data
-sudo chmod 777 /data/barco-data
+sudo mkdir /data/polar-data
+sudo chmod 777 /data/polar-data

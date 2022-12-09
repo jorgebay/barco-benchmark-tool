@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/HdrHistogram/hdrhistogram-go"
-	. "github.com/jorgebay/barco-benchmark-tool/internal"
+	. "github.com/jorgebay/polar-benchmark-tool/internal"
 	"golang.org/x/net/http2"
 )
 
@@ -96,9 +96,9 @@ func printResult(start time.Time, totalResponses int64, workload Workload) {
 
 	fmt.Printf(
 		"Latency in ms p50: %.1f; p999: %.1f max: %.1f.\n",
-		float64(histogram.ValueAtQuantile(50)) / 1_000,
-		float64(histogram.ValueAtQuantile(99.9)) / 1_000,
-		float64(histogram.ValueAtQuantile(100)) / 1_000)
+		float64(histogram.ValueAtQuantile(50))/1_000,
+		float64(histogram.ValueAtQuantile(99.9))/1_000,
+		float64(histogram.ValueAtQuantile(100))/1_000)
 	reqThroughput := (totalResponses * 1_000_000) / timeSpent.Microseconds()
 	fmt.Printf(
 		"Throughput %d messages/s (%d req/s)\n",

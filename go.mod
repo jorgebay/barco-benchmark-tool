@@ -1,4 +1,4 @@
-module github.com/jorgebay/barco-benchmark-tool
+module github.com/jorgebay/polar-benchmark-tool
 
 go 1.19
 
