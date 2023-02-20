@@ -29,6 +29,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/polarstreams/go-client v0.4.1-0.20230217104524-da000b67fff7 h1:3r4OSwvGafL8jQZgG1QsM0LXjOopb8u0gNuWL2GIPa8=
 github.com/polarstreams/go-client v0.4.1-0.20230217104524-da000b67fff7/go.mod h1:ocf8a3kkl8Umwg3FkZEoX+wKX6Auiu21zKIDjQmZrPE=
+github.com/polarstreams/go-client v0.4.1-0.20230220101458-b073c1ec3129 h1:QHf5kuiGJexT+YWYYjrN8dE9FS+9F80VSm7+68rfNYQ=
+github.com/polarstreams/go-client v0.4.1-0.20230220101458-b073c1ec3129/go.mod h1:ocf8a3kkl8Umwg3FkZEoX+wKX6Auiu21zKIDjQmZrPE=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5CcY=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=

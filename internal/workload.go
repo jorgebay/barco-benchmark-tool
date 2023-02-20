@@ -93,6 +93,7 @@ func newBinaryWorkload(hosts string) Workload {
 	return &binaryWorkload{
 		host:               strings.Split(hosts, ",")[0],
 		payloads:           make([][]byte, totalPayloads),
+		messagesPerRequest: 1,
 	}
 }
 
