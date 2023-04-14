@@ -1,27 +1,15 @@
 package main
 
 import (
-	"crypto/tls"
 	"flag"
 	"fmt"
-	"io"
 	"math/rand"
-	"net"
-	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/HdrHistogram/hdrhistogram-go"
 	. "github.com/jorgebay/polar-benchmark-tool/internal"
-	"golang.org/x/net/http2"
-)
-
-type httpVersion int
-
-const (
-	h1 httpVersion = iota
-	h2
 )
 
 var lastError atomic.Value
@@ -30,33 +18,33 @@ var lastError atomic.Value
 var requestsLength = flag.Int("n", 100, "Number of  requests across all  clients")
 var clientsLength = flag.Int("c", 1, "Number of clients")
 var maxConcurrentStreams = flag.Int("m", 32, "Max concurrent requests to issue per client.")
-var maxConnectionsPerHost = flag.Int("ch", 16, "For HTTP/1.1, determines the max connections per host.")
-var url = flag.String("u", "", "The uri(s) of the endpoint(s)")
-var workloadName = flag.String("w", "default", "The name of the workload")
+var maxConnectionsPerHost = flag.Int("ch", 16, "Connections per host.")
+var hosts = flag.String("hosts", "", "The host addresses of one of brokers in the cluster, the client will discover the rest of the brokers")
+var workloadName = flag.String("w", "binary", "The name of the workload (binary, get, http)")
 var messagesPerRequest = flag.Int("mr", 16, "Number of messages per request in the workload (when supported)")
-var useH2 = flag.Bool("h2", false, "Use HTTP/2")
+var useH2 = flag.Bool("h2", false, "For workloads that allow it, use HTTP/2")
 
 var histogram = hdrhistogram.New(1, 4_000_000, 4)
 
 func main() {
 	flag.Parse()
 
-	if *url == "" {
-		panic("Uri is required")
+	if *hosts == "" {
+		panic("Host addresses are required, e.g. 10.0.0.100")
 	}
 
 	fmt.Printf("Starting benchmark. %d total client(s). %d total requests\n", *clientsLength, *requestsLength)
 
-	workload := BuildWorkload(*workloadName, *url, *messagesPerRequest)
+	workload := BuildWorkload(*workloadName, *hosts, *messagesPerRequest)
 	fmt.Println("Initializing")
 	workload.Init()
-	version := h1
+	protocolInfo := ""
 	if *useH2 {
-		version = h2
+		protocolInfo = HTTP2
 	}
 
 	fmt.Println("Warming up")
-	warmup(workload, version)
+	warmup(workload, protocolInfo)
 
 	fmt.Println("Starting workload", *workloadName)
 	totalResponses := int64(0)
@@ -67,7 +55,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			okResponses := runClient(requestsPerClient, *maxConcurrentStreams, workload, version, false)
+			okResponses := runClient(requestsPerClient, *maxConcurrentStreams, workload, protocolInfo, false)
 			atomic.AddInt64(&totalResponses, int64(okResponses))
 		}()
 	}
@@ -106,35 +94,12 @@ func printResult(start time.Time, totalResponses int64, workload Workload) {
 		reqThroughput)
 }
 
-func warmup(workload Workload, v httpVersion) {
-	runClient(10000, 16, workload, v, true)
+func warmup(workload Workload, protocolInfo string) {
+	runClient(10000, 16, workload, protocolInfo, true)
 }
 
-func runClient(requestsLength int, maxConcurrentStreams int, workload Workload, v httpVersion, isWarmup bool) int64 {
-	var transport http.RoundTripper
-
-	if v == h1 {
-		transport = &http.Transport{
-			MaxConnsPerHost:     *maxConnectionsPerHost,
-			MaxIdleConnsPerHost: *maxConnectionsPerHost,
-		}
-	} else {
-		transport = &http2.Transport{
-			StrictMaxConcurrentStreams: true,
-			AllowHTTP:                  true,
-			DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
-				// Pretend we are dialing a TLS endpoint.
-				return net.Dial(network, addr)
-			},
-			ReadIdleTimeout: 1 * time.Second,
-		}
-	}
-
-	client := &http.Client{
-		Transport: transport,
-		Timeout:   10 * time.Second,
-	}
-
+func runClient(requestsLength int, maxConcurrentStreams int, workload Workload, protocolInfo string, isWarmup bool) int64 {
+	client := workload.NewClient(*maxConnectionsPerHost, protocolInfo)
 	c := make(chan bool, maxConcurrentStreams)
 	for i := 0; i < maxConcurrentStreams; i++ {
 		c <- true
@@ -162,35 +127,15 @@ func runClient(requestsLength int, maxConcurrentStreams int, workload Workload, 
 	return atomic.LoadInt64(&counter)
 }
 
-func doRequest(client *http.Client, w Workload, v int, isWarmup bool) bool {
-	req, err := http.NewRequest(w.Method(), w.Url(), w.Body(v))
-	if w.ContentType() != "" {
-		req.Header.Add("Content-Type", w.ContentType())
-	}
-	if err != nil {
-		panic(err)
-	}
+func doRequest(client WorkloadClient, w Workload, v int, isWarmup bool) bool {
 	start := time.Now()
-	resp, err := client.Do(req)
+	err := client.DoRequest(v)
 	if err != nil {
 		lastError.Store(err.Error())
 		return false
 	}
-
-	defer resp.Body.Close()
 	if !isWarmup {
 		histogram.RecordValue(time.Since(start).Microseconds())
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			panic(err)
-		}
-		lastError.Store(string(body))
-		return false
-	} else {
-		io.Copy(io.Discard, resp.Body)
 	}
 	return true
 }

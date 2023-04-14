@@ -6,7 +6,7 @@ variable "cluster_length" {
 
 variable "cluster_instance_type" {
   description = "The instance type for the brokers"
-  default = "t4g.micro" #
+  default = "t4g.micro"
 }
 
 variable "cluster_arch" {
@@ -20,7 +20,7 @@ variable "client_length" {
 }
 
 variable "client_instance_type" {
-  default = "c6i.2xlarge"
+  default = "c6in.8xlarge"
 }
 
 variable "key_name" {
