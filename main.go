@@ -18,9 +18,9 @@ var lastError atomic.Value
 var requestsLength = flag.Int("n", 100, "Number of  requests across all  clients")
 var clientsLength = flag.Int("c", 1, "Number of clients")
 var maxConcurrentStreams = flag.Int("m", 32, "Max concurrent requests to issue per client.")
-var maxConnectionsPerHost = flag.Int("ch", 16, "For HTTP/1.1, determines the max connections per host.")
-var hosts = flag.String("hosts", "", "The host addresses of the endpoint(s)")
-var workloadName = flag.String("w", "default", "The name of the workload (binary, get, default)")
+var maxConnectionsPerHost = flag.Int("ch", 16, "Connections per host.")
+var hosts = flag.String("hosts", "", "The host addresses of one of brokers in the cluster, the client will discover the rest of the brokers")
+var workloadName = flag.String("w", "binary", "The name of the workload (binary, get, http)")
 var messagesPerRequest = flag.Int("mr", 16, "Number of messages per request in the workload (when supported)")
 var useH2 = flag.Bool("h2", false, "For workloads that allow it, use HTTP/2")
 

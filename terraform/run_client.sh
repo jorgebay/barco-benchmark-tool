@@ -1,4 +1,4 @@
 git clone https://github.com/jorgebay/polar-benchmark-tool.git
-cd polar-benchmark-tool && go build .
+cd polar-benchmark-tool && git checkout main && go build .
 
-./polar-benchmark-tool -u http://10.0.0.100:9251/v1/topic/a-topic/messages,http://10.0.0.101:9251/v1/topic/a-topic/messages,http://10.0.0.102:9251/v1/topic/a-topic/messages -c 32 -n 1000000 -m 16 -mr 64 -ch 16
+./polar-benchmark-tool -w binary -hosts 10.0.0.100 -c 6 -n 2000000 -m 1024 -ch 1

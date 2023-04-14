@@ -30,7 +30,7 @@ type Workload interface {
 }
 
 func BuildWorkload(name string, hosts string, messagesPerRequest int) Workload {
-	if name == "default" || name == "http" {
+	if name == "http" {
 		return newHttpWorkload(hosts, messagesPerRequest)
 	}
 	if name == "get" {
