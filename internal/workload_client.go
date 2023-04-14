@@ -103,28 +103,44 @@ func createHttpClient(maxConnectionsPerHost int, protocolInfo string) *http.Clie
 }
 
 type binaryClient struct {
-	client polar.Producer
-	workload Workload
+	client             polar.Producer
+	workload           Workload
+	partitionKeyGetter func(int) string
 }
 
-func NewBinaryClient(w Workload, host string, maxConnectionsPerHost int) WorkloadClient {
+func NewBinaryClient(w Workload, host string, maxConnectionsPerHost int, ordered bool) WorkloadClient {
+	producer := newBinaryProducer(host, maxConnectionsPerHost)
+	partitionKeyGetter := func(int) string {
+		return ""
+	}
+
+	if ordered {
+		partitionKeyGetter = func(index int) string {
+			return fmt.Sprintf("p%d", index)
+		}
+	}
+
+	return &binaryClient{
+		client:             producer,
+		workload:           w,
+		partitionKeyGetter: partitionKeyGetter,
+	}
+}
+
+func (c *binaryClient) DoRequest(index int) error {
+	return c.client.Send("test-topic", c.workload.Body(index), c.partitionKeyGetter(index))
+}
+
+func newBinaryProducer(host string, maxConnectionsPerHost int) polar.Producer {
 	serviceUrl := fmt.Sprintf("polar://%s", host)
 	options := types.ProducerOptions{
 		FlushThresholdBytes:  0, // Leave at default
 		ConnectionsPerBroker: maxConnectionsPerHost,
-		Logger: types.StdLogger,
+		Logger:               types.StdLogger,
 	}
 	producer, err := polar.NewProducerWithOpts(serviceUrl, options)
 	if err != nil {
 		panic(err)
 	}
-
-	return &binaryClient{
-		client:   producer,
-		workload: w,
-	}
-}
-
-func (c *binaryClient) DoRequest(index int) error {
-	return c.client.Send("test-topic", c.workload.Body(index), "")
+	return producer
 }

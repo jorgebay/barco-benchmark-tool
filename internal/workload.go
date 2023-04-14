@@ -37,7 +37,10 @@ func BuildWorkload(name string, hosts string, messagesPerRequest int) Workload {
 		return newGetWorkload(hosts)
 	}
 	if name == "binary" {
-		return newBinaryWorkload(hosts)
+		return newBinaryWorkload(hosts, false)
+	}
+	if name == "binary-ordered" {
+		return newBinaryWorkload(hosts, true)
 	}
 
 	panic(fmt.Sprintf("Workload '%s' not found", name))
@@ -87,13 +90,15 @@ type binaryWorkload struct {
 	host               string
 	messagesPerRequest int
 	payloads           [][]byte
+	ordered            bool
 }
 
-func newBinaryWorkload(hosts string) Workload {
+func newBinaryWorkload(hosts string, ordered bool) Workload {
 	return &binaryWorkload{
 		host:               strings.Split(hosts, ",")[0],
 		payloads:           make([][]byte, totalPayloads),
 		messagesPerRequest: 1,
+		ordered:            ordered,
 	}
 }
 
@@ -102,7 +107,7 @@ func (w *binaryWorkload) MessagesPerPayload() int {
 }
 
 func (w *binaryWorkload) NewClient(maxConnectionsPerHost int, _ string) WorkloadClient {
-	return NewBinaryClient(w, w.host, maxConnectionsPerHost)
+	return NewBinaryClient(w, w.host, maxConnectionsPerHost, w.ordered)
 }
 
 func (w *binaryWorkload) Init() {
